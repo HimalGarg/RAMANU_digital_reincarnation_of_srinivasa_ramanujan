@@ -1,10 +1,11 @@
 # 🧮 Digital Twin of Srinivasa Ramanujan
 
-> *A RAG-powered AI that channels the mathematical intuition of the man who knew infinity.*
+> *A RAG-powered AI that channels the mathematical intuition and personal character of the man who knew infinity, complete with a procedurally generated mathematical animation engine (Manim).*
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
 ![Gemini](https://img.shields.io/badge/LLM-Gemini%202.5%20Flash-orange?logo=google&logoColor=white)
 ![ChromaDB](https://img.shields.io/badge/VectorDB-ChromaDB-green)
+![Manim](https://img.shields.io/badge/Animations-Manim-red)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 ---
@@ -22,221 +23,101 @@ graph TD
     TW --> PE[Persona Engine]
     PE --> GEM[Gemini 2.5 Flash]
     GEM --> TW
+    TW --> FE["Procedural Animation Engine<br/>(Manim Renderer)"]
+    FE --> MP["OS Media Player<br/>(Dynamic Video Playback)"]
     TW --> U
-    VDB -.->|"Notebooks, Letters,<br/>Biography"| RAG
 ```
 
 The system works in a **6-step pipeline**:
-
-1. **Retrieve** — RAG pipeline searches ChromaDB for relevant notebook entries, letters, and biographical context
-2. **Remember** — Short-term (session) and long-term (cross-session) memories are assembled
-3. **Construct** — The persona engine builds a deeply engineered system prompt with all context injected
-4. **Generate** — Gemini 2.5 Flash generates a response in Ramanujan's voice
-5. **Learn** — Both memory systems are updated with new topics, user math level, and moments of wonder
-6. **Respond** — The response is displayed in a beautifully styled Rich CLI panel
+1. **Retrieve** — RAG pipeline searches ChromaDB for relevant letters, notebooks, and biography context.
+2. **Remember** — Short-term session history and long-term user profile states are loaded.
+3. **Construct** — The Persona Engine structures a system prompt injecting context, memories, and tone directives.
+4. **Generate** — Gemini 2.5 Flash outputs a response in Ramanujan's voice.
+5. **Intercept Payload** — The orchestrator intercepts and extracts custom ````json-visual```` blocks.
+6. **Animate & Respond** — The chatbot text is displayed in a Rich CLI panel, and any visualization payload compiles a Manim video in a background subprocess, launching the OS media player automatically.
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-
 - Python 3.10+
-- A [Google AI Studio](https://aistudio.google.com/) API key for Gemini
+- **FFmpeg** ([FFmpeg](https://www.ffmpeg.org/download.html?ref=bytevortex.tech)) installed on your system path (required by Manim for rendering video files).
+- A [Google AI Studio](https://aistudio.google.com/) API key for Gemini.
 
-### Setup
-
+### Setup & Ingestion
 ```bash
 # 1. Clone the repository
 git clone https://github.com/yourusername/digital-twin-ramanujan.git
 cd digital-twin-ramanujan
 
-# 2. Create and activate a virtual environment (recommended)
+# 2. Create and activate a virtual environment
 python -m venv venv
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
+venv\Scripts\activate     # On Windows
+source venv/bin/activate  # On Linux/macOS
 
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Configure your API key
+# 4. Configure environment variables
+# Copy .env.example to .env and add your GEMINI_API_KEY
 cp .env.example .env
-# Edit .env and add your GEMINI_API_KEY
 
-# 5. Ingest the sample data
-python scripts/ingest.py --input sample_data/ --output data/processed/
+# 5. Ingest data files from data/raw/
+python scripts/ingest.py --input data/raw/ --output data/processed/
 
-# 6. Embed into ChromaDB
+# 6. Generate vector embeddings
 python scripts/embed.py
 
-# 7. Launch the Digital Twin!
+# 7. Start the Digital Twin!
 python demo.py
 ```
 
 ---
 
-## 💬 Sample Conversation
+## 💬 Interactive Chat Commands
 
-```
-[You] >> Tell me about the number 1729.
+When you launch `python demo.py`, you enter the interactive chat interface. You must type your prompts at the **`[You] >>`** prompt.
 
-╭─────────────────── Ramanujan ───────────────────╮
-│                                                   │
-│  Ah, 1729! You have touched upon a number that    │
-│  is very dear to me. Hardy sahib once came to     │
-│  visit me when I was ill at Putney, and he        │
-│  mentioned that his taxicab bore the number 1729, │
-│  which he thought was "rather dull." I could not   │
-│  help but reply — no, Hardy, no! It is a very     │
-│  interesting number.                               │
-│                                                   │
-│  You see, 1729 = 1³ + 12³ = 9³ + 10³. It is the  │
-│  smallest number expressible as the sum of two     │
-│  cubes in two different ways. Do you not feel      │
-│  that such a number has a personality?             │
-│                                                   │
-│  Is it not extraordinary that this should be so?   │
-│                                                   │
-╰───────────────────────────────────────────────────╯
-```
+> [!WARNING]
+> **Do not run chat commands (like `/visualize` or `/stats`) directly in your Windows PowerShell or Command Prompt.** They are special commands that must be typed *inside* the active chatbot session at the `[You] >>` line.
+
+### Available CLI Commands
+
+| Command | Usage | Description |
+|---------|-------|-------------|
+| **/stats** | `[You] >> /stats` | View active system metrics (loaded documents, model parameters, memory size, and session token counts). |
+| **/memory** | `[You] >> /memory` | View a summary of what Ramanujan has learned about you in long-term memory. |
+| **/reset** | `[You] >> /reset` | Reset the active session conversation history (start fresh). |
+| **/help** | `[You] >> /help` | Print out the list of available commands. |
+| **/quit** | `[You] >> /quit` | Save all persistent memory files and exit the chatbot session safely. |
+| **/visualize** | `[You] >> /visualize <topic>` | Force the system to generate a mathematical visualization animation for `<topic>`. |
 
 ---
 
-## 📁 Project Structure
+## 🎨 Mathematical Visualization Engine (The "Safe Fractal" Engine)
 
-| Path | Description |
-|------|-------------|
-| `agent/persona.py` | System prompt & persona constants |
-| `agent/rag.py` | RAG pipeline: embed, retrieve, format context |
-| `agent/memory.py` | Short-term + long-term memory managers |
-| `agent/twin.py` | Orchestrator: ties everything together |
-| `scripts/ingest.py` | Ingest PDFs/TXTs → chunked JSONL |
-| `scripts/embed.py` | Embed chunks → ChromaDB |
-| `sample_data/` | Ramanujan's letters, notebooks, biography excerpts |
-| `tests/` | Pytest test suite |
-| `demo.py` | Main entry point — Rich CLI chatbot |
-| `vectordb/` | ChromaDB persistent storage |
-| `data/raw/` | Place raw PDFs/TXTs here |
-| `data/processed/` | Chunked JSONL output |
+The project integrates the **Manim** animation engine. Instead of executing arbitrary LLM-generated code (which frequently crashes due to hallucinated syntax), the twin structures a parameter JSON payload that is executed by safe, pre-baked rendering scenes.
 
----
+### 1. Integer Partitions (`/visualize partitions`)
+- **Visuals:** Animates partition representations (Young/Ferrers diagrams) using grids of blocks.
+- **Action:** Displays the first partition (e.g. $5$) and morphs the blocks using a smooth `ReplacementTransform` transition into the next partition (e.g. $4+1$, $3+2$, etc.) showing the exact arithmetic.
 
-## 📚 Adding Your Own Data
+### 2. Continued Fractions (`/visualize continued fraction`)
+- **Visuals:** Recursively lays out a continued fraction in real-time, scaling down nested nodes by `0.85` at each level.
+- **Action:** Animates the fraction growing level-by-level, and computes/displays the exact convergent values ($c_0, c_1, c_2, \dots$) at the bottom of the screen.
 
-### Supported Formats
-- **TXT files** — Plain text, letters, transcriptions
-- **PDF files** — Scanned or digital PDFs (requires `pdfplumber`)
-
-### Steps
-
-1. Place your files in `data/raw/`:
-   ```bash
-   cp your_document.pdf data/raw/
-   ```
-
-2. Run the ingestion pipeline:
-   ```bash
-   python scripts/ingest.py --input data/raw/ --output data/processed/
-   ```
-
-3. Embed into ChromaDB:
-   ```bash
-   python scripts/embed.py
-   ```
-
-### Recommended Ramanujan Sources
-
-| Source | Type | Notes |
-|--------|------|-------|
-| **Ramanujan's Notebooks** (Parts I–V, ed. Bruce Berndt) | Notebooks | Definitive annotated edition |
-| **Collected Papers of Ramanujan** | Papers | All published papers |
-| **The Man Who Knew Infinity** (Robert Kanigel) | Biography | Comprehensive biography |
-| **A Mathematician's Apology** (G.H. Hardy) | Memoir | Hardy's reflections |
-| **Ramanujan: Twelve Lectures** (G.H. Hardy) | Lectures | Mathematical content |
-| **The Lost Notebook and Other Unpublished Papers** | Notebook | Discovered 1976 by George Andrews |
-| [MacTutor Biography](https://mathshistory.st-andrews.ac.uk/Biographies/Ramanujan/) | Online | Free biographical archive |
+### 3. Taxicab Numbers (`/visualize taxicab`)
+- **Visuals:** Renders 3D GridCubes made up of smaller square sub-grids (e.g., $9 \times 9 \times 9$ and $10 \times 10 \times 10$ meshes).
+- **Action:** Animates the cubes rotating in 3D camera angles to demonstrate spatial volume, and morphs them into a $1 \times 1 \times 1$ and $12 \times 12 \times 12$ arrangement to show they both sum up to $1729$.
 
 ---
 
-## ⚙️ Configuration
-
-### Environment Variables (`.env`)
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `GEMINI_API_KEY` | Google AI Studio API key | ✅ |
-
-### Persona Tuning
-
-Edit `agent/persona.py` to adjust:
-- `PERSONA_VERSION` — Track prompt iterations
-- `SIGNATURE_TOPICS` — Topics Ramanujan discusses with special depth
-- `SYSTEM_PROMPT_TEMPLATE` — The full persona prompt
-
-### RAG Tuning
-
-Edit `agent/rag.py` constructor or the `retrieve()` method:
-- `n_results` — Number of chunks to retrieve (default: 5)
-- Distance threshold — Currently 1.5 (cosine distance)
-- Context token limit — Currently 2000 tokens
-
----
-
-## 🧪 Running Tests
-
-```bash
-pytest tests/ -v
-```
-
-Tests cover:
-- **Persona** — Constants, template placeholders, prompt building
-- **Memory** — Short-term CRUD, long-term persistence, keyword matching
-- **RAG** — Embedding shape, add/retrieve, context formatting, metadata labels
-
----
-
-## ⚠️ Known Limitations & Future Improvements
-
-### Current Limitations
-- **No streaming** — Responses appear all at once after generation
-- **Simple keyword matching** for long-term memory (not vector-based)
-- **Single-user** — No multi-user session management
-- **No web UI** — CLI only for now
-
-### Planned Improvements
-- [ ] Streaming responses for better UX
-- [ ] Web interface (Gradio or Streamlit)
-- [ ] Vector-based long-term memory retrieval
-- [ ] Multi-turn reasoning chains
-- [ ] Mathematical notation rendering (LaTeX)
-- [ ] Voice synthesis with period-appropriate accent
-- [ ] Integration with Wolfram Alpha for live computation
-- [ ] Support for other historical mathematicians (Euler, Gauss, Euler)
-
----
-
-## 🛠️ Tech Stack
-
-| Component | Technology |
-|-----------|-----------|
-| LLM | Google Gemini 2.5 Flash |
-| Vector Database | ChromaDB (local persistent) |
-| Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
-| Text Splitting | LangChain RecursiveCharacterTextSplitter |
-| PDF Processing | pdfplumber |
-| CLI Interface | Rich |
-| Token Counting | tiktoken |
-| Configuration | python-dotenv |
-| Testing | pytest |
-
----
-
-## 📜 License
-
-This project is for educational and research purposes. The persona is based on
-historical accounts of Srinivasa Ramanujan and is used with deep respect for
-his legacy and contributions to mathematics.
-
+## 📚 Ingesting Custom Data
+To expand Ramanujan's knowledge base:
+1. Place raw PDF or TXT files in `data/raw/`.
+2. Run `python scripts/ingest.py --input data/raw/ --output data/processed/`.
+3. Re-run `python scripts/embed.py` to embed and load them into ChromaDB.
 ---
 
 *"An equation for me has no meaning unless it expresses a thought of God."*

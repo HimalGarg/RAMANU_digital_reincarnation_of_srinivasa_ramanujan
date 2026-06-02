@@ -6,8 +6,9 @@ of Srinivasa Ramanujan.
 """
 
 import os
-import random
 import sys
+import json
+import subprocess
 
 # Force UTF-8 encoding on Windows to prevent UnicodeEncodeError with Rich/emojis
 if sys.platform == "win32":
@@ -70,7 +71,7 @@ HELP_TEXT = """
   [cyan]/stats[/cyan]     — View system status (RAG, memory, model info)
   [cyan]/reset[/cyan]     — Reset session memory (start fresh)
   [cyan]/memory[/cyan]    — View long-term memory summary
-  [cyan]/notebook[/cyan]  — Read a random excerpt from Ramanujan's writings
+  [cyan]/visualize[/cyan] — Explicitly request a mathematical visualization (e.g. /visualize partitions)
   [cyan]/help[/cyan]      — Show this help message
   [cyan]/quit[/cyan]      — Save memories and exit
 
@@ -80,46 +81,7 @@ Just type your question or message to chat with Ramanujan.
 console = Console()
 
 
-def load_notebook_excerpts() -> list[str]:
-    """Load excerpts from sample_data/ramanujan_writings.txt."""
-    sample_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "sample_data",
-        "ramanujan_writings.txt",
-    )
-
-    if not os.path.exists(sample_path):
-        return ["(No writings file found. Please ensure sample_data/ramanujan_writings.txt exists.)"]
-
-    with open(sample_path, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    # Split on section headers or double blank lines
-    # Each excerpt is separated by a blank line and starts with text
-    raw_parts = content.split("\n\n")
-
-    excerpts = []
-    current = []
-    for part in raw_parts:
-        stripped = part.strip()
-        if not stripped:
-            continue
-        # Skip section headers (lines of ═══)
-        if stripped.startswith("═"):
-            if current:
-                excerpts.append("\n\n".join(current))
-                current = []
-            continue
-        current.append(stripped)
-        # Each [Source: ...] line ends an excerpt
-        if stripped.startswith("[Source:") or stripped.endswith("]"):
-            excerpts.append("\n\n".join(current))
-            current = []
-
-    if current:
-        excerpts.append("\n\n".join(current))
-
-    return [e for e in excerpts if len(e) > 50]
+# Notebook excerpts loading functions removed.
 
 
 def print_header():
@@ -209,26 +171,52 @@ def display_stats(twin):
     console.print()
 
 
-def display_notebook(excerpts: list[str]):
-    """Display a random notebook excerpt."""
-    if not excerpts:
-        console.print("[dim]No notebook excerpts available.[/dim]")
-        return
+# Notebook display function removed.
 
-    excerpt = random.choice(excerpts)
-    console.print(
-        Panel(
-            excerpt,
-            title="[bold yellow]📓 From Ramanujan's Writings[/bold yellow]",
-            border_style="yellow",
-            box=box.ROUNDED,
-            padding=(1, 2),
+
+def run_visualization(payload: dict):
+    """Compiles and opens the mathematical visualization using Manim in a subprocess."""
+    console.print("\n[bold yellow]✨ Ramanujan is drawing a mathematical diagram...[/bold yellow]")
+    console.print("[dim]Generating animation using Manim in the background. Please wait...[/dim]\n")
+
+    temp_json_path = "data/visualizations/temp_config.json"
+    os.makedirs(os.path.dirname(temp_json_path), exist_ok=True)
+    with open(temp_json_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=4)
+
+    output_path = os.path.abspath("data/visualizations/output.mp4")
+
+    try:
+        # Run scripts/render_visual.py
+        cmd = [
+            sys.executable,
+            "scripts/render_visual.py",
+            "--json", temp_json_path,
+            "--output", output_path
+        ]
+
+        result = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
         )
-    )
-    console.print()
+
+        if result.returncode == 0:
+            console.print(f"[bold green]✓ Animation successfully rendered to:[/bold green] {output_path}")
+            console.print("[green]Opening media player to display the animation...[/green]\n")
+            if sys.platform == "win32":
+                os.startfile(output_path)
+            else:
+                opener = "open" if sys.platform == "darwin" else "xdg-open"
+                subprocess.run([opener, output_path])
+        else:
+            console.print(f"[red]Error rendering animation:[/red]\n{result.stderr}")
+    except Exception as e:
+        console.print(f"[red]Failed to launch animation renderer: {e}[/red]\n")
 
 
-def handle_command(command: str, twin, excerpts: list[str]) -> bool:
+def handle_command(command: str, twin) -> bool:
     """
     Handle a special command.
 
@@ -269,8 +257,55 @@ def handle_command(command: str, twin, excerpts: list[str]) -> bool:
         )
         console.print()
 
-    elif cmd == "/notebook":
-        display_notebook(excerpts)
+    elif cmd.startswith("/visualize"):
+        query = command[len("/visualize"):].strip().lower()
+        if not query:
+            console.print("[red]Please specify what you would like to visualize, e.g. /visualize partitions[/red]\n")
+            return True
+
+        prompt = f"Please explain and visualize this topic: {query}"
+        with console.status(
+            "[yellow]Formulating mathematical visualization...[/yellow]",
+            spinner="dots",
+        ):
+            response = twin.think(prompt)
+
+        display_response(response)
+
+        # Fallback router: enforce correct visualization type if LLM is rate-limited or incorrect
+        payload = twin.last_visual_payload
+        if not payload:
+            if any(kw in query for kw in ["fraction", "continued"]):
+                payload = {
+                    "visualization_type": "continued_fraction",
+                    "parameters": {
+                        "title": "Ramanujan Continued Fraction",
+                        "terms": [1, 2, 3, 4, 5]
+                    }
+                }
+            elif any(kw in query for kw in ["partition", "diagram", "young"]):
+                payload = {
+                    "visualization_type": "partition_grid",
+                    "parameters": {
+                        "n": 5
+                    }
+                }
+            elif any(kw in query for kw in ["taxicab", "1729", "cube"]):
+                payload = {
+                    "visualization_type": "taxicab",
+                    "parameters": {
+                        "n": 1729,
+                        "pairs": [[9, 10], [1, 12]]
+                    }
+                }
+
+        # Clear the payload so it does not carry over
+        twin.last_visual_payload = None
+
+        if payload:
+            run_visualization(payload)
+        else:
+            console.print("[yellow]No visualization template matched this query. Try continued fractions, partitions, or taxicab numbers.[/yellow]\n")
 
     elif cmd == "/quit":
         twin.long_term_memory.save()
@@ -322,7 +357,7 @@ def main():
             Panel(
                 "[yellow]⚠ Knowledge base is empty.[/yellow]\n\n"
                 "Run the following commands to populate it:\n"
-                "  [cyan]python scripts/ingest.py --input sample_data/ --output data/processed/[/cyan]\n"
+                "  [cyan]python scripts/ingest.py --input data/raw/ --output data/processed/[/cyan]\n"
                 "  [cyan]python scripts/embed.py[/cyan]\n\n"
                 "Continuing in persona-only mode (no RAG context).",
                 title="Warning",
@@ -334,9 +369,6 @@ def main():
 
     print_initialization(twin)
     print_welcome()
-
-    # Load notebook excerpts for /notebook command
-    excerpts = load_notebook_excerpts()
 
     # ── Chat Loop ─────────────────────────────────────────────────────────
     while True:
@@ -361,7 +393,7 @@ def main():
 
         # Handle special commands
         if user_input.startswith("/"):
-            should_continue = handle_command(user_input, twin, excerpts)
+            should_continue = handle_command(user_input, twin)
             if not should_continue:
                 break
             continue
@@ -374,6 +406,12 @@ def main():
             response = twin.think(user_input)
 
         display_response(response)
+
+        # Trigger visualization rendering if a payload is set by the twin
+        if twin.last_visual_payload:
+            payload = twin.last_visual_payload
+            twin.last_visual_payload = None
+            run_visualization(payload)
 
 
 if __name__ == "__main__":

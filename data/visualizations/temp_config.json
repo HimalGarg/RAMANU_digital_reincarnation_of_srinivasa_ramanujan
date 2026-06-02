@@ -1,0 +1,6 @@
+{
+    "visualization_type": "partition_grid",
+    "parameters": {
+        "n": 5
+    }
+}

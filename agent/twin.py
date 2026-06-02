@@ -5,6 +5,7 @@ Main orchestrator that ties together the RAG pipeline, memory system,
 persona engine, and Gemini LLM to create the Digital Twin.
 """
 
+import json
 import os
 import re
 
@@ -92,6 +93,8 @@ class RamanujanTwin:
         if verbose:
             print(f"  ✓ Persona engine: {SCIENTIST_NAME} v{PERSONA_VERSION}")
 
+        self.last_visual_payload = None
+
     def think(self, user_input: str) -> str:
         """
         Core pipeline: process user input and generate a Ramanujan response.
@@ -110,6 +113,7 @@ class RamanujanTwin:
         Returns:
             Ramanujan's response as a string.
         """
+        self.last_visual_payload = None
         # ── Step 1: Retrieve context ──────────────────────────────────────
         try:
             retrieved = self._rag.retrieve(user_input, n_results=5)
@@ -172,14 +176,25 @@ class RamanujanTwin:
                         "today. Would you be kind enough to ask me once more?"
                     )
 
-        # ── Step 5: Update memories ───────────────────────────────────────
+        # ── Step 5: Process visual payload ────────────────────────────────
+        self.last_visual_payload = None
+        visual_match = re.search(r"```json-visual\s*(.*?)\s*```", response_text, re.DOTALL)
+        if visual_match:
+            try:
+                parsed = json.loads(visual_match.group(1).strip())
+                self.last_visual_payload = parsed
+                response_text = response_text.replace(visual_match.group(0), "").strip()
+            except Exception:
+                pass
+
+        # ── Step 6: Update memories ───────────────────────────────────────
         self._short_term.add_turn("user", user_input)
         self._short_term.add_turn("ramanujan", response_text)
 
         # Detect topics for long-term memory
         self._update_long_term_memory(user_input, response_text)
 
-        # ── Step 6: Return response ───────────────────────────────────────
+        # ── Step 7: Return response ───────────────────────────────────────
         return response_text
 
     def _update_long_term_memory(self, user_input: str, response: str) -> None:
