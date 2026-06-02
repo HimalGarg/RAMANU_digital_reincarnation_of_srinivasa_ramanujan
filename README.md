@@ -95,7 +95,7 @@ When you launch `python demo.py`, you enter the interactive chat interface. You 
 
 ---
 
-## 🎨 Mathematical Visualization Engine (The "Safe Fractal" Engine)
+## 🎨 Mathematical Visualization Engine
 
 The project integrates the **Manim** animation engine. Instead of executing arbitrary LLM-generated code (which frequently crashes due to hallucinated syntax), the twin structures a parameter JSON payload that is executed by safe, pre-baked rendering scenes.
 
