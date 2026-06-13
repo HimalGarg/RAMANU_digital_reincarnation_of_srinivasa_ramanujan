@@ -30,11 +30,21 @@ graph TD
 
 The system works in a **6-step pipeline**:
 1. **Retrieve** — RAG pipeline searches ChromaDB for relevant letters, notebooks, and biography context.
-2. **Remember** — Short-term session history and long-term user profile states are loaded.
+2. **Remember** — Short-term session history, key-value long-term profile states, and semantic vector memories are loaded.
 3. **Construct** — The Persona Engine structures a system prompt injecting context, memories, and tone directives.
 4. **Generate** — Gemini 2.5 Flash outputs a response in Ramanujan's voice.
 5. **Intercept Payload** — The orchestrator intercepts and extracts custom ````json-visual```` blocks.
 6. **Animate & Respond** — The chatbot text is displayed in a Rich CLI panel, and any visualization payload compiles a Manim video in a background subprocess, launching the OS media player automatically.
+
+---
+
+## 🧠 Memory System
+
+The Digital Twin features a dual-layer memory system:
+1. **Short-Term Memory**: Conversation turns from the active session are stored in memory and used as immediate conversation context (wiped on reset/quit).
+2. **Long-Term Memory**:
+   - **Key-Value State Memory (`vectordb/long_term.json`)**: Tracks persistent statistics across sessions, such as interaction count, topics explored, moments of wonder, and user mathematical level.
+   - **Vector-Based Semantic Memory (`ramanujan_memories` collection in ChromaDB)**: Extracts personal facts about the user (e.g., name, background, current projects) on application exit using Gemini. These facts are embedded using `all-MiniLM-L6-v2` and searched at the start of each turn to dynamically recall user context and adapt responses in future sessions.
 
 ---
 

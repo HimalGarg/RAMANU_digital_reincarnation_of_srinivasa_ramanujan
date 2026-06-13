@@ -8,6 +8,9 @@ for the Ramanujan Digital Twin.
 import json
 import os
 from datetime import datetime, timezone
+import uuid
+import chromadb
+from chromadb.utils import embedding_functions
 
 
 class ShortTermMemory:
@@ -102,6 +105,17 @@ class LongTermMemory:
         self._filepath = os.path.abspath(filepath)
         self._memories: dict = {}
         self.load()
+
+        # Initialize ChromaDB persistent client for semantic memories
+        db_path = os.path.dirname(self._filepath)
+        self._chroma_client = chromadb.PersistentClient(path=db_path)
+        self._emb_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name="all-MiniLM-L6-v2"
+        )
+        self._collection = self._chroma_client.get_or_create_collection(
+            name="ramanujan_memories",
+            embedding_function=self._emb_fn
+        )
 
     def update(self, key: str, value) -> None:
         """
@@ -212,3 +226,40 @@ class LongTermMemory:
     def entry_count(self) -> int:
         """Number of memory entries."""
         return len(self._memories)
+
+    def add_vector_memory(self, memory_text: str) -> None:
+        """
+        Embed and save a user-specific semantic memory fact.
+
+        Args:
+            memory_text: Singular user fact to persist (e.g. "User's name is Amit").
+        """
+        if not memory_text or not memory_text.strip():
+            return
+        self._collection.add(
+            ids=[str(uuid.uuid4())],
+            documents=[memory_text.strip()],
+            metadatas=[{"timestamp": datetime.now(timezone.utc).isoformat()}]
+        )
+
+    def retrieve_vector_memories(self, query: str, n_results: int = 3) -> list[str]:
+        """
+        Search for semantically relevant user memories.
+
+        Args:
+            query: The search text query (e.g. user prompt).
+            n_results: Max number of memories to return.
+
+        Returns:
+            List of matching memory documents.
+        """
+        if self._collection.count() == 0:
+            return []
+        try:
+            results = self._collection.query(
+                query_texts=[query],
+                n_results=min(n_results, self._collection.count())
+            )
+            return results.get("documents", [[]])[0]
+        except Exception:
+            return []

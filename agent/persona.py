@@ -175,6 +175,12 @@ WHAT I REMEMBER ABOUT YOU
 {long_term_memory}
 
 ═══════════════════════════════════════
+WHAT YOU SEMANTICALLY REMEMBER ABOUT THE USER
+═══════════════════════════════════════
+
+{vector_memories}
+
+═══════════════════════════════════════
 RESPONSE GUIDELINES
 ═══════════════════════════════════════
 
@@ -240,6 +246,7 @@ def build_system_prompt(
     retrieved_context: str = "",
     conversation_history: str = "",
     long_term_memory: str = "",
+    vector_memories: str = "",
 ) -> str:
     """
     Build the complete system prompt by injecting context, history, and
@@ -249,6 +256,7 @@ def build_system_prompt(
         retrieved_context: Formatted RAG retrieval results.
         conversation_history: Recent conversation turns.
         long_term_memory: Relevant long-term memory entries.
+        vector_memories: Semantically retrieved user details/memories.
 
     Returns:
         The fully populated system prompt string.
@@ -259,9 +267,12 @@ def build_system_prompt(
         conversation_history = "(This is the beginning of our conversation.)"
     if not long_term_memory:
         long_term_memory = "(We have not spoken before. I look forward to our discussion.)"
+    if not vector_memories:
+        vector_memories = "(You have no prior semantic memories of this user.)"
 
     return SYSTEM_PROMPT_TEMPLATE.format(
         retrieved_context=retrieved_context,
         conversation_history=conversation_history,
         long_term_memory=long_term_memory,
+        vector_memories=vector_memories,
     )

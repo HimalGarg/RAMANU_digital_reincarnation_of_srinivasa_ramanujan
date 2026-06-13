@@ -124,12 +124,15 @@ class RamanujanTwin:
         # ── Step 2: Build memory context ──────────────────────────────────
         history = self._short_term.get_history(max_turns=8)
         long_mem = self._long_term.get_relevant_memories(user_input)
+        vector_facts = self._long_term.retrieve_vector_memories(user_input, n_results=3)
+        vector_mems = "\n".join(f"- {fact}" for fact in vector_facts) if vector_facts else ""
 
         # ── Step 3: Build full prompt ─────────────────────────────────────
         system_prompt = build_system_prompt(
             retrieved_context=context_block,
             conversation_history=history,
             long_term_memory=long_mem,
+            vector_memories=vector_mems,
         )
 
         # ── Step 4: Call Gemini ───────────────────────────────────────────
@@ -282,3 +285,38 @@ class RamanujanTwin:
     def long_term_memory(self) -> "LongTermMemory":
         """Access long-term memory (for display in demo)."""
         return self._long_term
+
+    def save_session(self) -> None:
+        """Consolidate user memories from the active session using the LLM and save."""
+        history_str = self._short_term.get_history(max_turns=30)
+        if history_str:
+            prompt = f"""You are the memory consolidation module for the Srinivasa Ramanujan Digital Twin.
+Review the following conversation history between the user and Ramanujan.
+Extract a list of distinct, singular facts or characteristics about the user that were explicitly revealed in this conversation (e.g., their name, interests, mathematical projects, background, location, or beliefs).
+Do not record general mathematical equations or facts. Only record facts about the user.
+Output each fact as a simple, short bullet point (1 sentence maximum) starting with "- User ...".
+If no new personal facts or user characteristics were revealed, output nothing.
+
+=== Conversation History ===
+{history_str}
+
+Output facts list:"""
+            try:
+                # Use a low temperature configuration to enforce accurate, strict extraction
+                response = self._model.generate_content(
+                    [{"role": "user", "parts": [{"text": prompt}]}],
+                    generation_config=genai.GenerationConfig(
+                        temperature=0.1,
+                        max_output_tokens=512,
+                    )
+                )
+                response_text = response.text
+                for line in response_text.split("\n"):
+                    line_stripped = line.strip()
+                    if line_stripped.startswith("-"):
+                        fact = line_stripped.lstrip("- ").strip()
+                        if fact:
+                            self._long_term.add_vector_memory(fact)
+            except Exception:
+                pass
+        self._long_term.save()

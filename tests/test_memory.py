@@ -7,10 +7,35 @@ import json
 import os
 import sys
 import tempfile
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from agent.memory import ShortTermMemory, LongTermMemory
+
+
+@pytest.fixture(autouse=True)
+def mock_chromadb():
+    """Mock ChromaDB client and embedding function for all tests to run fast and isolated."""
+    with patch("agent.memory.chromadb.PersistentClient") as mock_client_cls, \
+         patch("agent.memory.embedding_functions.SentenceTransformerEmbeddingFunction") as mock_emb_fn_cls:
+        
+        mock_client = MagicMock()
+        mock_collection = MagicMock()
+        
+        # Configure count default return value
+        mock_collection.count.return_value = 0
+        
+        mock_client_cls.return_value = mock_client
+        mock_client.get_or_create_collection.return_value = mock_collection
+        mock_emb_fn_cls.return_value = MagicMock()
+        
+        yield {
+            "client": mock_client,
+            "collection": mock_collection,
+        }
 
 
 # ─── Short-Term Memory Tests ─────────────────────────────────────────────────
@@ -127,3 +152,74 @@ def test_long_term_empty():
     finally:
         if os.path.exists(tmppath):
             os.unlink(tmppath)
+
+
+def test_long_term_add_vector_memory():
+    """Verify add_vector_memory correctly calls ChromaDB's add method."""
+    fd, tmppath = tempfile.mkstemp(suffix=".json")
+    os.close(fd)
+
+    try:
+        ltm = LongTermMemory(filepath=tmppath)
+        
+        # Verify empty string or whitespace does not add anything
+        ltm.add_vector_memory("   ")
+        assert ltm._collection.add.call_count == 0
+        
+        # Add normal memory
+        ltm.add_vector_memory("User's name is Amit")
+        assert ltm._collection.add.call_count == 1
+        
+        # Verify args
+        args, kwargs = ltm._collection.add.call_args
+        assert len(kwargs["ids"]) == 1
+        assert kwargs["documents"] == ["User's name is Amit"]
+        assert "timestamp" in kwargs["metadatas"][0]
+    finally:
+        os.unlink(tmppath)
+
+
+def test_long_term_retrieve_vector_memories():
+    """Verify retrieve_vector_memories queries ChromaDB when count > 0."""
+    fd, tmppath = tempfile.mkstemp(suffix=".json")
+    os.close(fd)
+
+    try:
+        ltm = LongTermMemory(filepath=tmppath)
+        
+        # 1. When count is 0
+        ltm._collection.count.return_value = 0
+        results = ltm.retrieve_vector_memories("who am i?")
+        assert results == []
+        assert ltm._collection.query.call_count == 0
+        
+        # 2. When count is > 0
+        ltm._collection.count.return_value = 5
+        ltm._collection.query.return_value = {
+            "documents": [["User's name is Amit", "User lives in Delhi"]]
+        }
+        
+        results = ltm.retrieve_vector_memories("name", n_results=3)
+        assert results == ["User's name is Amit", "User lives in Delhi"]
+        ltm._collection.query.assert_called_once_with(
+            query_texts=["name"],
+            n_results=3
+        )
+    finally:
+        os.unlink(tmppath)
+
+
+def test_long_term_retrieve_vector_memories_exception():
+    """Verify retrieve_vector_memories handles exceptions gracefully."""
+    fd, tmppath = tempfile.mkstemp(suffix=".json")
+    os.close(fd)
+
+    try:
+        ltm = LongTermMemory(filepath=tmppath)
+        ltm._collection.count.return_value = 1
+        ltm._collection.query.side_effect = Exception("ChromaDB error")
+        
+        results = ltm.retrieve_vector_memories("query")
+        assert results == []
+    finally:
+        os.unlink(tmppath)

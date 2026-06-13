@@ -1,8 +1,0 @@
-# This file is used internally by FFMPEG.
-file 'file:C:/Users/HP/Desktop/VS/twin_proj/Digital_Twin_Ramanujan/data/visualizations/videos/480p15/partial_movie_files/Taxicab3DScene/1776048069_3711672997_1506104263.mp4'
-file 'file:C:/Users/HP/Desktop/VS/twin_proj/Digital_Twin_Ramanujan/data/visualizations/videos/480p15/partial_movie_files/Taxicab3DScene/4198647980_2322155929_1366766277.mp4'
-file 'file:C:/Users/HP/Desktop/VS/twin_proj/Digital_Twin_Ramanujan/data/visualizations/videos/480p15/partial_movie_files/Taxicab3DScene/4198647980_2675416170_2104834407.mp4'
-file 'file:C:/Users/HP/Desktop/VS/twin_proj/Digital_Twin_Ramanujan/data/visualizations/videos/480p15/partial_movie_files/Taxicab3DScene/1005384517_2107564625_1155304725.mp4'
-file 'file:C:/Users/HP/Desktop/VS/twin_proj/Digital_Twin_Ramanujan/data/visualizations/videos/480p15/partial_movie_files/Taxicab3DScene/2352019353_2990709985_1495269494.mp4'
-file 'file:C:/Users/HP/Desktop/VS/twin_proj/Digital_Twin_Ramanujan/data/visualizations/videos/480p15/partial_movie_files/Taxicab3DScene/3113153570_2107564625_3345727990.mp4'
-file 'file:C:/Users/HP/Desktop/VS/twin_proj/Digital_Twin_Ramanujan/data/visualizations/videos/480p15/partial_movie_files/Taxicab3DScene/3969193744_4073845205_1605524877.mp4'

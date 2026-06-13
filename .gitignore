@@ -10,3 +10,7 @@ dist/
 build/
 .pytest_cache/
 tmp_test_vectordb/
+data/visualizations/
+RAMANU conversation images/
+RAMANU_demo_vid.webm
+RAMANU_demo_video.webm

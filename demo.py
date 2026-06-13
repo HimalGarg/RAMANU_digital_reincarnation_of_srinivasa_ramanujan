@@ -308,7 +308,11 @@ def handle_command(command: str, twin) -> bool:
             console.print("[yellow]No visualization template matched this query. Try continued fractions, partitions, or taxicab numbers.[/yellow]\n")
 
     elif cmd == "/quit":
-        twin.long_term_memory.save()
+        with console.status(
+            "[yellow]Consolidating memories and saving session...[/yellow]",
+            spinner="dots",
+        ):
+            twin.save_session()
         console.print(
             Panel(
                 FAREWELL_MESSAGE,
@@ -376,7 +380,11 @@ def main():
             user_input = console.input("[bold cyan]\\[You] >> [/bold cyan]").strip()
         except (EOFError, KeyboardInterrupt):
             console.print()
-            twin.long_term_memory.save()
+            with console.status(
+                "[yellow]Consolidating memories and saving session...[/yellow]",
+                spinner="dots",
+            ):
+                twin.save_session()
             console.print(
                 Panel(
                     FAREWELL_MESSAGE,
